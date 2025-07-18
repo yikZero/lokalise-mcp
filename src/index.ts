@@ -28,25 +28,36 @@ const server = new McpServer(
   }
 );
 
-server.tool("get-project-info", async () => {
-  if (!DEFAULT_PROJECT_ID) {
-    throw new Error("No project ID provided, please set DEFAULT_PROJECT_ID");
+server.tool(
+  "get-project-info",
+  `Retrieves a project object, acquire basic information. If user provides a projectId, use it. Otherwise, use the default projectId: ${DEFAULT_PROJECT_ID}`,
+  {
+    projectId: z.string().describe("A unique project identifier"),
+  },
+  async (args) => {
+    const { projectId } = args;
+    const projectIdToUse = projectId || DEFAULT_PROJECT_ID;
+
+    if (!projectIdToUse) {
+      throw new Error("No project ID provided, please set DEFAULT_PROJECT_ID");
+    }
+
+    const response = await lokaliseApi.projects().get(projectIdToUse);
+
+    return {
+      content: [
+        {
+          text: JSON.stringify(response, null, 2),
+          type: "text",
+        },
+      ],
+    };
   }
-
-  const response = await lokaliseApi.projects().get(DEFAULT_PROJECT_ID);
-
-  return {
-    content: [
-      {
-        text: JSON.stringify(response, null, 2),
-        type: "text",
-      },
-    ],
-  };
-});
+);
 
 server.tool(
   "search-keys",
+  "Find the corresponding keyid by keyname",
   {
     projectId: z.string().describe("A unique project identifier"),
     filterKeys: z
@@ -73,6 +84,7 @@ server.tool(
 
 server.tool(
   "create-keys",
+  "Creates one or more keys in the project",
   {
     projectId: z
       .string()
@@ -82,6 +94,12 @@ server.tool(
     keys: z.array(
       z.object({
         keyName: z.string().describe("Key identifier"),
+        platforms: z
+          .array(z.enum(["web", "ios", "android", "other"]))
+          .describe(
+            "Platforms for the key. If not provided, use the default platforms: " +
+              PLATFORMS.join(", ")
+          ),
         translations: z
           .array(
             z.object({
@@ -103,7 +121,7 @@ server.tool(
       {
         keys: keys.map((key: any) => ({
           key_name: key.keyName,
-          platforms: PLATFORMS,
+          platforms: key.platforms,
           translations: key.translations.map((t: any) => ({
             language_iso: t.languageIso,
             translation: t.translation,
@@ -126,6 +144,7 @@ server.tool(
 
 server.tool(
   "update-keys",
+  "Updates one or more keys in the project",
   {
     projectId: z.string().describe("A unique project identifier"),
     keys: z.array(
