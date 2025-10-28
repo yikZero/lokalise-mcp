@@ -21,14 +21,16 @@ The server requires these environment variables to function:
 - `DEFAULT_PROJECT_ID` - The Lokalise project ID to operate on
 - `PLATFORMS` - Optional comma-separated list of platforms (defaults to "web,ios,android,other")
 
+Set up environment variables by copying `.env.example` to `.env` and filling in the values.
+
 ## Development Commands
 
 ```bash
-# Build the project (compiles TypeScript and makes executable)
-pnpm run build
-
 # Install dependencies
 pnpm install
+
+# Build the project (compiles TypeScript and makes executable)
+pnpm run build
 
 # Run the compiled server directly (after build)
 ./build/index.js
@@ -41,10 +43,10 @@ lokalise
 
 The server provides these tools for MCP clients:
 
-1. **`get-project-info`** - Retrieves project information using DEFAULT_PROJECT_ID
-2. **`create-keys`** - Creates localization keys with translations for specified platforms
-3. **`search-keys`** - Searches for keys by name in a project
-4. **`update-keys`** - Updates existing keys with new translations
+1. **`get-project-info`** - Retrieves project information. Accepts optional projectId parameter, otherwise uses DEFAULT_PROJECT_ID
+2. **`create-keys`** - Creates localization keys with translations for specified platforms. Requires projectId and keys array with keyName, platforms, and translations
+3. **`search-keys`** - Searches for keys by name in a project. Requires projectId and filterKeys (comma-separated key names)
+4. **`update-keys`** - Updates existing keys with new translations. Requires projectId and keys array with keyId and translations
 
 ## Key Implementation Details
 
@@ -54,6 +56,29 @@ The server provides these tools for MCP clients:
 - Platforms can be configured via environment variable but default to `["web", "ios", "android", "other"]`
 - The binary is made executable via `chmod 755` during build process
 - Console output uses `console.error()` to avoid interfering with MCP protocol on stdout
+- All API responses are returned as JSON strings in MCP tool content format
+
+## Tool Parameter Details
+
+### get-project-info
+- `projectId` (optional): If not provided, uses DEFAULT_PROJECT_ID from environment
+
+### search-keys  
+- `projectId` (required): Project identifier
+- `filterKeys` (required): Comma-separated list of key names to search for
+
+### create-keys
+- `projectId` (required): Project identifier  
+- `keys` (required): Array of objects with:
+  - `keyName`: Key identifier
+  - `platforms`: Array of platform strings (web, ios, android, other)
+  - `translations`: Array of objects with `languageIso` and `translation`
+
+### update-keys
+- `projectId` (required): Project identifier
+- `keys` (required): Array of objects with:
+  - `keyId`: Existing key identifier
+  - `translations`: Array of objects with `languageIso` and `translation`
 
 ## Project Structure
 

@@ -6,12 +6,12 @@ import { z } from "zod";
 
 const LOKALISE_API_KEY = process.env.LOKALISE_API_KEY;
 const DEFAULT_PROJECT_ID = process.env.DEFAULT_PROJECT_ID;
-const PLATFORMS = (process.env.PLATFORMS?.split(",").map((p) => p.trim()) || [
-  "web",
-  "ios",
-  "android",
-  "other",
-]) as SupportedPlatforms[];
+const DEFAULT_PLATFORMS = ["web", "ios", "android", "other"];
+const PLATFORMS = (
+  process.env.PLATFORMS
+    ? process.env.PLATFORMS.split(",").map((p) => p.trim())
+    : DEFAULT_PLATFORMS
+) as SupportedPlatforms[];
 
 const lokaliseApi = new LokaliseApi({ apiKey: LOKALISE_API_KEY });
 
@@ -28,14 +28,16 @@ const server = new McpServer(
   }
 );
 
-server.tool(
+server.registerTool(
   "get-project-info",
-  `Retrieves a project object, acquire basic information. If user provides a projectId, use it. Otherwise, use the default projectId: ${DEFAULT_PROJECT_ID}`,
   {
-    projectId: z.string().describe("A unique project identifier"),
+    title: "Get Project Info",
+    description: `Retrieves a project object, acquire basic information. If user provides a projectId, use it. Otherwise, use the default projectId: ${DEFAULT_PROJECT_ID}`,
+    inputSchema: {
+      projectId: z.string().describe("A unique project identifier"),
+    },
   },
-  async (args) => {
-    const { projectId } = args;
+  async ({ projectId }) => {
     const projectIdToUse = projectId || DEFAULT_PROJECT_ID;
 
     if (!projectIdToUse) {
@@ -47,25 +49,28 @@ server.tool(
     return {
       content: [
         {
-          text: JSON.stringify(response, null, 2),
           type: "text",
+          text: JSON.stringify(response),
         },
       ],
+      structuredContent: response as any,
     };
   }
 );
 
-server.tool(
+server.registerTool(
   "search-keys",
-  "Find the corresponding keyid by keyname",
   {
-    projectId: z.string().describe("A unique project identifier"),
-    filterKeys: z
-      .string()
-      .describe("One or more key name to filter by (comma separated)"),
+    title: "Search Keys",
+    description: "Find the corresponding keyid by keyname",
+    inputSchema: {
+      projectId: z.string().describe("A unique project identifier"),
+      filterKeys: z
+        .string()
+        .describe("One or more key name to filter by (comma separated)"),
+    },
   },
-  async (args) => {
-    const { projectId, filterKeys } = args;
+  async ({ projectId, filterKeys }) => {
     const response = await lokaliseApi.keys().list({
       project_id: projectId,
       filter_keys: filterKeys,
@@ -74,55 +79,60 @@ server.tool(
     return {
       content: [
         {
-          text: JSON.stringify(response, null, 2),
           type: "text",
+          text: JSON.stringify(response),
         },
       ],
+      structuredContent: response as any,
     };
   }
 );
 
-server.tool(
+server.registerTool(
   "create-keys",
-  "Creates one or more keys in the project",
   {
-    projectId: z
-      .string()
-      .describe(
-        "A unique project identifier, if not provide, first use get-project-info tool to get the project id"
+    title: "Create Keys",
+    description: "Creates one or more keys in the project",
+    inputSchema: {
+      projectId: z
+        .string()
+        .describe(
+          "A unique project identifier, if not provide, first use get-project-info tool to get the project id"
+        ),
+      keys: z.array(
+        z.object({
+          keyName: z.string().describe("Key identifier"),
+          platforms: z
+            .array(z.enum(["web", "ios", "android", "other"]))
+            .describe(
+              "Platforms for the key. If not provided, use the default platforms: " +
+                PLATFORMS.join(", ")
+            ),
+          translations: z
+            .array(
+              z.object({
+                languageIso: z
+                  .string()
+                  .describe(
+                    "Unique code of the language of the translation, get the list from the get-project-info tool"
+                  ),
+                translation: z
+                  .string()
+                  .describe("The actual translation. Pass as an object"),
+              })
+            )
+            .describe("Translations for all languages"),
+        })
       ),
-    keys: z.array(
-      z.object({
-        keyName: z.string().describe("Key identifier"),
-        platforms: z
-          .array(z.enum(["web", "ios", "android", "other"]))
-          .describe(
-            "Platforms for the key. If not provided, use the default platforms: " +
-              PLATFORMS.join(", ")
-          ),
-        translations: z
-          .array(
-            z.object({
-              languageIso: z
-                .string()
-                .describe("Unique code of the language of the translation"),
-              translation: z
-                .string()
-                .describe("The actual translation. Pass as an object"),
-            })
-          )
-          .describe("Translations for all languages"),
-      })
-    ),
+    },
   },
-  async (args) => {
-    const { projectId, keys } = args;
+  async ({ projectId, keys }) => {
     const response = await lokaliseApi.keys().create(
       {
-        keys: keys.map((key: any) => ({
+        keys: keys.map((key) => ({
           key_name: key.keyName,
           platforms: key.platforms,
-          translations: key.translations.map((t: any) => ({
+          translations: key.translations.map((t) => ({
             language_iso: t.languageIso,
             translation: t.translation,
           })),
@@ -134,44 +144,49 @@ server.tool(
     return {
       content: [
         {
-          text: JSON.stringify(response, null, 2),
           type: "text",
+          text: JSON.stringify(response),
         },
       ],
+      structuredContent: response as any,
     };
   }
 );
 
-server.tool(
+server.registerTool(
   "update-keys",
-  "Updates one or more keys in the project",
   {
-    projectId: z.string().describe("A unique project identifier"),
-    keys: z.array(
-      z.object({
-        keyId: z.string().describe("A unique identifier of the key"),
-        translations: z
-          .array(
-            z.object({
-              languageIso: z
-                .string()
-                .describe("Unique code of the language of the translation"),
-              translation: z
-                .string()
-                .describe("The actual translation. Pass as an object"),
-            })
-          )
-          .describe("Translations for all languages"),
-      })
-    ),
+    title: "Update Keys",
+    description: "Updates one or more keys in the project",
+    inputSchema: {
+      projectId: z.string().describe("A unique project identifier"),
+      keys: z.array(
+        z.object({
+          keyId: z.string().describe("A unique identifier of the key"),
+          translations: z
+            .array(
+              z.object({
+                languageIso: z
+                  .string()
+                  .describe(
+                    "Unique code of the language of the translation, get the list from the get-project-info tool"
+                  ),
+                translation: z
+                  .string()
+                  .describe("The actual translation. Pass as an object"),
+              })
+            )
+            .describe("Translations for all languages"),
+        })
+      ),
+    },
   },
-  async (args) => {
-    const { projectId, keys } = args;
+  async ({ projectId, keys }) => {
     const response = await lokaliseApi.keys().bulk_update(
       {
-        keys: keys.map((key: any) => ({
+        keys: keys.map((key) => ({
           key_id: key.keyId,
-          translations: key.translations.map((t: any) => ({
+          translations: key.translations.map((t) => ({
             language_iso: t.languageIso,
             translation: t.translation,
           })),
@@ -183,10 +198,11 @@ server.tool(
     return {
       content: [
         {
-          text: JSON.stringify(response, null, 2),
           type: "text",
+          text: JSON.stringify(response),
         },
       ],
+      structuredContent: response as any,
     };
   }
 );
