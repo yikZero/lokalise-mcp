@@ -1,0 +1,45 @@
+{
+  "name": "@yikzero/lokalise-mcp",
+  "version": "1.0.0",
+  "author": "yikZero",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "description": "Model Context Protocol (MCP) server for Lokalise localization platform",
+  "keywords": [
+    "mcp",
+    "lokalise",
+    "localization",
+    "i18n",
+    "translation"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yikZero/lokalise-mcp"
+  },
+  "main": "./build/index.js",
+  "type": "module",
+  "bin": {
+    "lokalise": "./build/index.js"
+  },
+  "scripts": {
+    "build": "tsc && chmod 755 build/index.js",
+    "prepublishOnly": "pnpm run build"
+  },
+  "files": [
+    "build",
+    "README.md",
+    ".env.example"
+  ],
+  "dependencies": {
+    "@lokalise/node-api": "^15.3.1",
+    "@modelcontextprotocol/sdk": "^1.20.2",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^24.9.1",
+    "typescript": "^5.9.3"
+  },
+  "packageManager": "pnpm@10.11.0+sha512.6540583f41cc5f628eb3d9773ecee802f4f9ef9923cc45b69890fb47991d4b092964694ec3a4f738a420c918a333062c8b925d312f42e4f0c263eb603551f977"
+}
